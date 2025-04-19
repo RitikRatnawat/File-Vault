@@ -59,7 +59,7 @@ class StorageStatistics(models.Model):
         stats, created = cls.objects.get_or_create(id=1)
         
         stats.total_files = File.objects.count()
-        stats.unique_files = File.objects.exclude(original_file__isnull=True).count()
+        stats.unique_files = File.objects.exclude(original_file__isnull=False).count()
         
         stats.duplicates = stats.total_files - stats.unique_files
         
