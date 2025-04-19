@@ -22,7 +22,7 @@ class FileSerializer(serializers.ModelSerializer):
     def get_original_filename(self, obj):
         """Get the original filename if the file is a duplicate"""
         
-        return obj.original_file.name or None
+        return obj.original_file.name if obj.original_file else None
     
 
 class StorageStatisticsSerializer(serializers.ModelSerializer):
