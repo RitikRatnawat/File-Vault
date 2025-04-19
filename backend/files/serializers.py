@@ -30,5 +30,5 @@ class StorageStatisticsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StorageStatistics
-        fields = ['total_files', 'unique_files', 'duplicates', 'total_size', 'saved_size', 'last_updated']
+        fields = ['total_files', 'unique_files', 'duplicates', 'total_size', 'actual_size', 'saved_size', 'last_updated']
         read_only_fields = ['last_updated']
