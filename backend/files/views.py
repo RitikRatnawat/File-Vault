@@ -1,30 +1,63 @@
-from django.shortcuts import render
+import hashlib
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import File
-from .serializers import FileSerializer
+from django_filters import rest_framework as filters
+from .models import File, StorageStatistics
+from .serializers import FileSerializer, StorageStatisticsSerializer
+from .filters import FileFilter
 
 # Create your views here.
 
 class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.all()
     serializer_class = FileSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_class = FileFilter
 
     def create(self, request, *args, **kwargs):
-        file_obj = request.FILES.get('file')
-        if not file_obj:
+        """View to handle file upload."""
+        
+        uploaded_file = request.FILES.get('file')
+        
+        if not uploaded_file:
             return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         
-        data = {
-            'file': file_obj,
-            'original_filename': file_obj.name,
-            'file_type': file_obj.content_type,
-            'size': file_obj.size
-        }
+        content_hash = self.__calculate_file_hash(uploaded_file)
         
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        new_file = File(
+            name=uploaded_file.name,
+            file_type=uploaded_file.name.split('.')[-1] if '.' in uploaded_file.name else '',
+            size=uploaded_file.size,
+            content_hash=content_hash
+        )
         
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        existing_file = File.objects.filter(content_hash=content_hash).first()
+        
+        if existing_file and existing_file.original_file is None:
+            new_file.file = existing_file.file
+            new_file.original_file = existing_file
+        else:
+            new_file.file = uploaded_file
+            
+        # Save the new file
+        new_file.save()
+        
+        # Update storage statistics
+        StorageStatistics.update_statistics()
+        
+        serializer = self.get_serializer(new_file)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    
+    def __calculate_file_hash(self, file):
+        """Calculate the hash of the file."""
+        
+        sha256 = hashlib.sha256()
+        
+        for chunk in file.chunks():
+            sha256.update(chunk)
+            
+        file.seek(0)  # Reset file pointer to the beginning
+            
+        return sha256.hexdigest()
