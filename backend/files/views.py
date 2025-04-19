@@ -61,3 +61,16 @@ class FileViewSet(viewsets.ModelViewSet):
         file.seek(0)  # Reset file pointer to the beginning
             
         return sha256.hexdigest()
+    
+    
+    @action(detail=False, methods=['get'])
+    def storage_statistics(self, request):
+        """View to get storage statistics."""
+        
+        stats = StorageStatistics.objects.first()
+        
+        if not stats:
+            return Response({'error': 'No statistics available'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = StorageStatisticsSerializer(stats)
+        return Response(serializer.data, status=status.HTTP_200_OK)
