@@ -32,7 +32,7 @@ class FileViewSet(viewsets.ModelViewSet):
             content_hash=content_hash
         )
         
-        existing_file = File.objects.filter(content_hash=content_hash).first()
+        existing_file = File.objects.filter(content_hash=content_hash, original_file__isnull=True).first()
         
         if existing_file and existing_file.original_file is None:
             new_file.file = existing_file.file
