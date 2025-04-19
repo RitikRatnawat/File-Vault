@@ -49,6 +49,7 @@ class StorageStatistics(models.Model):
     unique_files = models.BigIntegerField(default=0)
     duplicates = models.BigIntegerField(default=0)
     total_size = models.BigIntegerField(default=0)
+    actual_size = models.BigIntegerField(default=0)
     saved_size = models.BigIntegerField(default=0)
     last_updated = models.DateTimeField(auto_now=True)
     
@@ -65,8 +66,8 @@ class StorageStatistics(models.Model):
         
         stats.total_size = File.objects.aggregate(total_size=models.Sum("size"))['total_size'] or 0
           
-        actual_size = File.objects.filter(original_file__isnull=True).aggregate(total_size=models.Sum("size"))['total_size'] or 0
-        stats.saved_size = stats.total_size - actual_size
+        stats.actual_size = File.objects.filter(original_file__isnull=True).aggregate(total_size=models.Sum("size"))['total_size'] or 0
+        stats.saved_size = stats.total_size - stats.actual_size
         
         stats.last_updated = timezone.now()
         
