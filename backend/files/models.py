@@ -26,7 +26,7 @@ class File(models.Model):
     content_hash = models.CharField(max_length=64, db_index=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
-    original_file = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='duplicates')
+    original_file = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='duplicates')
     
     class Meta:
         ordering = ['-uploaded_at']
