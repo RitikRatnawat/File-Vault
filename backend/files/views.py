@@ -50,6 +50,22 @@ class FileViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     
+    def destroy(self, request, pk=None):
+        """View to handle file deletion."""
+        
+        file = File.objects.filter(pk=pk)
+        
+        if not file:
+            return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        file.delete()
+        
+        # Update storage statistics
+        StorageStatistics.update_statistics()
+        
+        return Response({'message': 'File deleted successfully'}, status=status.HTTP_200_OK)
+    
+    
     def __calculate_file_hash(self, file):
         """Calculate the hash of the file."""
         
