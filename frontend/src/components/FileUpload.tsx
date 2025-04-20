@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { fileService } from '../services/fileService';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface FileUploadProps {
   onUploadSuccess: () => void;
@@ -17,6 +17,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     onSuccess: () => {
       // Invalidate and refetch files query
       queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['storageStats'] });
       setSelectedFile(null);
       onUploadSuccess();
     },
@@ -24,6 +25,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
       setError('Failed to upload file. Please try again.');
       console.error('Upload error:', error);
     },
+  });
+
+  // Mutation for Storage Statistics
+  const { data: storageStats } = useQuery({
+    queryKey: ['storageStats'],
+    queryFn: fileService.getStorageStats,
   });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,9 +46,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
       return;
     }
 
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
     try {
       setError(null);
-      await uploadMutation.mutateAsync(selectedFile);
+      await uploadMutation.mutateAsync(formData);
     } catch (err) {
       // Error handling is done in onError callback
     }
