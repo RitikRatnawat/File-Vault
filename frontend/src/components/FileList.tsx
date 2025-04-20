@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { fileService } from '../services/fileService';
 import { FileFilters } from '../types/file';
-import { formatFileSize } from '../utils/files';
+import { formatFileSize } from '../utils/file';
 import {
   DocumentIcon,
   TrashIcon,
@@ -51,7 +51,7 @@ export const FileList: React.FC = () => {
     debounce((value: string) => {
       setFilters(prev => ({ ...prev, file_name: value }));
     }, 300),
-    []
+    [debounce, setFilters]
   );
 
   // Handle search input change
