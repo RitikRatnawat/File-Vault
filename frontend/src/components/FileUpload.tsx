@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { fileService } from '../services/fileService';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { set } from 'lodash';
 
 interface FileUploadProps {
   onUploadSuccess: () => void;
@@ -10,6 +11,7 @@ interface FileUploadProps {
 export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
@@ -40,6 +42,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     }
   };
 
+ // Handle drag events
+ const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (e.type === 'dragenter' || e.type === 'dragover') {
+    setDragActive(true);
+  } else if (e.type === 'dragleave') {
+    setDragActive(false);
+  }
+}, [setDragActive]);
+
+// Handle drop event
+const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setDragActive(false);
+  
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    setSelectedFile(e.dataTransfer.files[0]);
+    setError(null);
+  }
+}, [setSelectedFile, setError]);
+
   const handleUpload = async () => {
     if (!selectedFile) {
       setError('Please select a file');
@@ -64,7 +90,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         <h2 className="text-xl font-semibold text-gray-900">Upload File</h2>
       </div>
       <div className="mt-4 space-y-4">
-        <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
+        <div className={`flex justify-center px-6 pt-5 pb-6 border-2 rounded-lg ${dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-gray-50 border-dashed'}`}
+          onDragEnter={handleDrag}
+          onDragOver={handleDrag}
+          onDragLeave={handleDrag}
+          onDrop={handleDrop}>
           <div className="space-y-1 text-center">
             <div className="flex text-sm text-gray-600">
               <label
