@@ -2,15 +2,22 @@ import React, { useState, useCallback } from 'react';
 import { fileService } from '../services/fileService';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { set } from 'lodash';
 
 interface FileUploadProps {
   onUploadSuccess: () => void;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
+  const [fileState, setFileState] = useState<{
+    selectedFile: File | null;
+    error: string | null;
+    dragActive: boolean;
+  }>({
+    selectedFile: null,
+    error: null,
+    dragActive: false
+  });
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
@@ -19,11 +26,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
       // Invalidate and refetch files query
       queryClient.invalidateQueries({ queryKey: ['files'] });
       queryClient.invalidateQueries({ queryKey: ['storageStats'] });
-      setSelectedFile(null);
+      setFileState(prev => ({ ...prev, selectedFile: null }));
       onUploadSuccess();
     },
     onError: (error) => {
-      setError('Failed to upload file. Please try again.');
+      setFileState(prev => ({ ...prev, error: 'Failed to upload file. Please try again.' }));
       console.error('Upload error:', error);
     },
   });
@@ -36,46 +43,56 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
-      setError(null);
+      setFileState(prev => ({
+        ...prev,
+        selectedFile: event.target.files![0],
+        error: null
+      }));
     }
   };
 
- // Handle drag events
- const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  if (e.type === 'dragenter' || e.type === 'dragover') {
-    setDragActive(true);
-  } else if (e.type === 'dragleave') {
-    setDragActive(false);
-  }
-}, [setDragActive]);
+  const handleDrag = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isActive = e.type === 'dragenter' || e.type === 'dragover';
+    
+    setFileState(prev => {
+      // Only update if there's an actual change to prevent unnecessary re-renders
+      if (prev.dragActive !== isActive) {
+        return { ...prev, dragActive: isActive };
+      }
+      return prev;
+    });
+  }, [setFileState]);
 
-// Handle drop event
-const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-  e.preventDefault();
-  e.stopPropagation();
-  setDragActive(false);
-  
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-    setSelectedFile(e.dataTransfer.files[0]);
-    setError(null);
-  }
-}, [setSelectedFile, setError]);
+  // Handle drop event
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFileState({
+        selectedFile: e.dataTransfer.files[0],
+        error: null,
+        dragActive: false
+      });
+    } else {
+      setFileState(prev => ({ ...prev, dragActive: false }));
+    }
+  }, [setFileState]);
 
   const handleUpload = async () => {
-    if (!selectedFile) {
-      setError('Please select a file');
+    if (!fileState.selectedFile) {
+      setFileState(prev => ({ ...prev, error: 'Please select a file' }));
       return;
     }
 
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    formData.append('file', fileState.selectedFile);
 
     try {
-      setError(null);
+      setFileState(prev => ({ ...prev, error: null }));
       await uploadMutation.mutateAsync(formData);
     } catch (err) {
       // Error handling is done in onError callback
@@ -89,7 +106,7 @@ const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         <h2 className="text-xl font-semibold text-gray-900">Upload File</h2>
       </div>
       <div className="mt-4 space-y-4">
-        <div className={`flex justify-center px-6 pt-5 pb-6 border-2 rounded-lg ${dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-gray-50 border-dashed'}`}
+        <div className={`flex justify-center px-6 pt-5 pb-6 border-2 rounded-lg ${fileState.dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 bg-gray-50 border-dashed'}`}
           onDragEnter={handleDrag}
           onDragOver={handleDrag}
           onDragLeave={handleDrag}
@@ -115,24 +132,23 @@ const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
             <p className="text-xs text-gray-500">Any file up to 10MB</p>
           </div>
         </div>
-        {selectedFile && (
+        {fileState.selectedFile && (
           <div className="text-sm text-gray-600">
-            Selected: {selectedFile.name}
+            Selected: {fileState.selectedFile.name}
           </div>
         )}
-        {error && (
+        {fileState.error && (
           <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-            {error}
+            {fileState.error}
           </div>
         )}
         <button
           onClick={handleUpload}
-          disabled={!selectedFile || uploadMutation.isPending}
-          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-            !selectedFile || uploadMutation.isPending
-              ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-          }`}
+          disabled={!fileState.selectedFile || uploadMutation.isPending}
+          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${!fileState.selectedFile || uploadMutation.isPending
+            ? 'bg-gray-300 cursor-not-allowed'
+            : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+            }`}
         >
           {uploadMutation.isPending ? (
             <>
