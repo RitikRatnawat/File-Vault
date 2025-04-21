@@ -50,7 +50,7 @@ export const FileList: React.FC = () => {
   const debouncedSearch = useCallback(
     debounce((value: string) => {
       setFilters(prev => ({ ...prev, file_name: value }));
-    }, 300),
+    }, 500),
     [debounce, setFilters]
   );
 
