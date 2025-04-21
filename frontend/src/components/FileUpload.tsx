@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { fileService } from '../services/fileService';
 import { CloudArrowUpIcon } from '@heroicons/react/24/outline';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { set } from 'lodash';
 
 interface FileUploadProps {
   onUploadSuccess: () => void;
